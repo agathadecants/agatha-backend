@@ -19,7 +19,7 @@ app.use(cors({
 
 async function openDb() {
     return await mysql.createConnection({
-        host: 'srv1187.hstgr.io',  // Altere aqui se for usar um banco MySQL na nuvem
+        host: 'srv1965.hstgr.io',  // Altere aqui se for usar um banco MySQL na nuvem
         user: 'root',
         password: '@Gui240106',
         database: 'agatha_decants'
