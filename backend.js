@@ -5,6 +5,13 @@ import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 
+import fetch from 'node-fetch';
+
+fetch('https://api.ipify.org?format=json')
+  .then(res => res.json())
+  .then(json => console.log("IP público da Render:", json.ip))
+  .catch(err => console.error("Erro ao buscar IP:", err));
+
 const app = express();
 app.use(express.json());
 app.use(cors({
@@ -174,3 +181,5 @@ app.post('/update-password', async (req, res) => {
 // ✅ Porta dinâmica para deploy em nuvem
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+
+
