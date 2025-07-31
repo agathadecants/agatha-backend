@@ -21,7 +21,7 @@ async function openDb() {
         host: process.env.DB_HOST || 'srv1965.hstgr.io',
         user: process.env.DB_USER || 'u287491057_root',
         password: process.env.DB_PASS || '@Gui240106',
-        database: process.env.DB_NAME || 'agatha_decants'  // ALTERADO para o nome correto do DB
+        database: process.env.DB_NAME || 'u287491057_agathadecants'  // ALTERADO para o nome correto do DB
     });
 }
 
