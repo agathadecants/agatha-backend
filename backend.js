@@ -5,28 +5,25 @@ import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 
-fetch('https://api.ipify.org?format=json')
-  .then(res => res.json())
-  .then(json => console.log("IP público da Render:", json.ip))
-  .catch(err => console.error("Erro ao buscar IP:", err));
-
 const app = express();
+
+// Middleware para JSON no corpo
 app.use(express.json());
+
+// Ajuste CORS - liberar seu domínio
 app.use(cors({
   origin: 'https://agathadecants.com.br'
 }));
 
-
 // Configuração do banco com variáveis de ambiente para facilitar deploy
 async function openDb() {
     return await mysql.createConnection({
-        host: process.env.DB_HOST || 'srv1965.hstgr.io', // ✅ HOST CORRIGIDO
+        host: process.env.DB_HOST || 'srv1965.hstgr.io',
         user: process.env.DB_USER || 'u287491057_root',
         password: process.env.DB_PASS || '@Gui240106',
-        database: process.env.DB_NAME || 'u287491057_agathadecants'
+        database: process.env.DB_NAME || 'agatha_decants'  // ALTERADO para o nome correto do DB
     });
 }
-
 
 // Cadastro de usuários
 app.post('/cadastrar', async (req, res) => {
@@ -35,7 +32,7 @@ app.post('/cadastrar', async (req, res) => {
         const db = await openDb();
 
         await db.execute(`
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS usuarios (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 nome VARCHAR(100),
                 sobrenome VARCHAR(100),
@@ -44,16 +41,18 @@ app.post('/cadastrar', async (req, res) => {
             )
         `);
 
-        const [existing] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        const [existing] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]); // tabela 'usuarios'
         if (existing.length > 0) {
+            await db.end();
             return res.status(400).json({ mensagem: 'E-mail já cadastrado.' });
         }
 
         const senhaCriptografada = await bcrypt.hash(senha, 10);
-        await db.execute('INSERT INTO users (nome, sobrenome, email, senha) VALUES (?, ?, ?, ?)', [
+        await db.execute('INSERT INTO usuarios (nome, sobrenome, email, senha) VALUES (?, ?, ?, ?)', [
             nome, sobrenome, email, senhaCriptografada
         ]);
 
+        await db.end();
         res.status(200).json({ mensagem: 'Usuário cadastrado com sucesso' });
     } catch (erro) {
         console.error('Erro no /cadastrar:', erro);
@@ -64,21 +63,39 @@ app.post('/cadastrar', async (req, res) => {
 // Login de usuários
 app.post('/login', async (req, res) => {
     try {
-        const { email, senha } = req.body;
-        const db = await openDb();
+        console.log('Requisição recebida no /login:', req.body);
 
-        const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        const { email, senha } = req.body;
+
+        if (!email || !senha) {
+            return res.status(400).json({ mensagem: 'E-mail e senha são obrigatórios' });
+        }
+
+        const db = await openDb();
+        const [rows] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]); // tabela 'usuarios'
+
+        console.log('Resultado do SELECT:', rows);
+
         const user = rows[0];
 
         if (!user) {
+            await db.end();
             return res.status(401).json({ mensagem: 'E-mail ou senha incorretos' });
+        }
+
+        if (!user.senha) {
+            console.error('Senha ausente no banco para o usuário:', user);
+            await db.end();
+            return res.status(500).json({ mensagem: 'Erro no login: senha não definida' });
         }
 
         const senhaValida = await bcrypt.compare(senha, user.senha);
         if (!senhaValida) {
+            await db.end();
             return res.status(401).json({ mensagem: 'E-mail ou senha incorretos' });
         }
 
+        await db.end();
         res.status(200).json({ mensagem: 'Login bem-sucedido', nome: user.nome });
     } catch (erro) {
         console.error('Erro no /login:', erro);
@@ -90,7 +107,8 @@ app.post('/login', async (req, res) => {
 app.get('/usuarios', async (req, res) => {
     try {
         const db = await openDb();
-        const [users] = await db.execute('SELECT id, nome, sobrenome, email FROM users');
+        const [users] = await db.execute('SELECT id, nome, sobrenome, email FROM usuarios'); // tabela 'usuarios'
+        await db.end();
         res.json(users);
     } catch (erro) {
         console.error('Erro no /usuarios:', erro);
@@ -113,8 +131,9 @@ app.post('/esqueci-senha', async (req, res) => {
         const { email } = req.body;
         const db = await openDb();
 
-        const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        const [users] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]); // tabela 'usuarios'
         if (users.length === 0) {
+            await db.end();
             return res.status(404).json({ mensagem: 'E-mail não encontrado' });
         }
 
@@ -132,6 +151,8 @@ app.post('/esqueci-senha', async (req, res) => {
         await db.execute('INSERT INTO reset_tokens (email, token, expiresAt) VALUES (?, ?, ?)', [
             email, token, expiresAt
         ]);
+
+        await db.end();
 
         const link = `https://agathadecants.com.br/TS.html?token=${token}`;
 
@@ -159,18 +180,21 @@ app.post('/update-password', async (req, res) => {
         const tokenData = tokens[0];
 
         if (!tokenData) {
+            await db.end();
             return res.status(400).json({ mensagem: 'Token inválido' });
         }
 
         if (Date.now() > tokenData.expiresAt) {
+            await db.end();
             return res.status(400).json({ mensagem: 'Token expirado' });
         }
 
         const senhaCriptografada = await bcrypt.hash(newPassword, 10);
 
-        await db.execute('UPDATE users SET senha = ? WHERE email = ?', [senhaCriptografada, tokenData.email]);
+        await db.execute('UPDATE usuarios SET senha = ? WHERE email = ?', [senhaCriptografada, tokenData.email]); // tabela 'usuarios'
         await db.execute('DELETE FROM reset_tokens WHERE token = ?', [token]);
 
+        await db.end();
         res.status(200).json({ mensagem: 'Senha atualizada com sucesso' });
     } catch (erro) {
         console.error('Erro no /update-password:', erro);
@@ -178,8 +202,6 @@ app.post('/update-password', async (req, res) => {
     }
 });
 
-// ✅ Porta dinâmica para deploy em nuvem
+// Porta dinâmica para deploy em nuvem
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
-
-
