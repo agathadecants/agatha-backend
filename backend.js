@@ -5,8 +5,6 @@ import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 
-import fetch from 'node-fetch';
-
 fetch('https://api.ipify.org?format=json')
   .then(res => res.json())
   .then(json => console.log("IP público da Render:", json.ip))
