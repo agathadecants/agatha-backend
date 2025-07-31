@@ -17,14 +17,16 @@ app.use(cors({
 }));
 
 
+// Configuração do banco com variáveis de ambiente para facilitar deploy
 async function openDb() {
     return await mysql.createConnection({
-        host: 'srv1965.hstgr.io',  // Altere aqui se for usar um banco MySQL na nuvem
-        user: 'root',
-        password: '@Gui240106',
-        database: 'agatha_decants'
+        host: process.env.DB_HOST || 'srv1965.hstgr.io', // ✅ HOST CORRIGIDO
+        user: process.env.DB_USER || 'u287491057_root',
+        password: process.env.DB_PASS || '@Gui240106',
+        database: process.env.DB_NAME || 'u287491057_agathadecants'
     });
 }
+
 
 // Cadastro de usuários
 app.post('/cadastrar', async (req, res) => {
