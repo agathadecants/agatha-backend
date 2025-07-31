@@ -49,6 +49,7 @@ app.post('/cadastrar', async (req, res) => {
         await db.execute('INSERT INTO usuarios (nome, sobrenome, email, senha) VALUES (?, ?, ?, ?)', [
             nome, sobrenome, email, senhaCriptografada
         ]);
+        console.log(`Usuário ${email} cadastrado com sucesso.`);
 
         await db.end();
         res.status(200).json({ mensagem: 'Usuário cadastrado com sucesso' });
@@ -119,7 +120,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'agathadecants@gmail.com',
-        pass: 'rthz sfjv gzlo guft', // Sua senha ou app password do Gmail
+        pass: 'rthz sfjv gzlo guft', // sua senha ou app password
     },
 });
 
