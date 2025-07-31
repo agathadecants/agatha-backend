@@ -10,10 +10,8 @@ const app = express();
 // Middleware para JSON no corpo
 app.use(express.json());
 
-// Ajuste CORS - liberar seu domínio
-app.use(cors({
-  origin: 'https://agathadecants.com.br'
-}));
+// Ajuste CORS - liberar para todas as origens
+app.use(cors());
 
 // Configuração do banco com variáveis de ambiente para facilitar deploy
 async function openDb() {
@@ -21,7 +19,7 @@ async function openDb() {
         host: process.env.DB_HOST || 'srv1965.hstgr.io',
         user: process.env.DB_USER || 'u287491057_root',
         password: process.env.DB_PASS || '@Gui240106',
-        database: process.env.DB_NAME || 'u287491057_agathadecants'  // ALTERADO para o nome correto do DB
+        database: process.env.DB_NAME || 'u287491057_agathadecants'  // nome correto do DB
     });
 }
 
@@ -41,7 +39,7 @@ app.post('/cadastrar', async (req, res) => {
             )
         `);
 
-        const [existing] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]); // tabela 'usuarios'
+        const [existing] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
         if (existing.length > 0) {
             await db.end();
             return res.status(400).json({ mensagem: 'E-mail já cadastrado.' });
@@ -72,7 +70,7 @@ app.post('/login', async (req, res) => {
         }
 
         const db = await openDb();
-        const [rows] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]); // tabela 'usuarios'
+        const [rows] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
 
         console.log('Resultado do SELECT:', rows);
 
@@ -107,7 +105,7 @@ app.post('/login', async (req, res) => {
 app.get('/usuarios', async (req, res) => {
     try {
         const db = await openDb();
-        const [users] = await db.execute('SELECT id, nome, sobrenome, email FROM usuarios'); // tabela 'usuarios'
+        const [users] = await db.execute('SELECT id, nome, sobrenome, email FROM usuarios');
         await db.end();
         res.json(users);
     } catch (erro) {
@@ -121,7 +119,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'agathadecants@gmail.com',
-        pass: 'rthz sfjv gzlo guft',
+        pass: 'rthz sfjv gzlo guft', // Sua senha ou app password do Gmail
     },
 });
 
@@ -131,7 +129,7 @@ app.post('/esqueci-senha', async (req, res) => {
         const { email } = req.body;
         const db = await openDb();
 
-        const [users] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]); // tabela 'usuarios'
+        const [users] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
         if (users.length === 0) {
             await db.end();
             return res.status(404).json({ mensagem: 'E-mail não encontrado' });
@@ -191,7 +189,7 @@ app.post('/update-password', async (req, res) => {
 
         const senhaCriptografada = await bcrypt.hash(newPassword, 10);
 
-        await db.execute('UPDATE usuarios SET senha = ? WHERE email = ?', [senhaCriptografada, tokenData.email]); // tabela 'usuarios'
+        await db.execute('UPDATE usuarios SET senha = ? WHERE email = ?', [senhaCriptografada, tokenData.email]);
         await db.execute('DELETE FROM reset_tokens WHERE token = ?', [token]);
 
         await db.end();
